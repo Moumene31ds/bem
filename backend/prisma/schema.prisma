@@ -1,0 +1,37 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// The type of national exam the graduate completed
+enum ExamType {
+  BEM
+  BAC
+}
+
+/// Grade classification for Algerian graduates
+enum GradeType {
+  EXCELLENT   // ممتاز (Grade >= 18)
+  VERY_GOOD   // جيد جداً (Grade >= 16)
+  GOOD        // جيد (Grade >= 14)
+  PASSABLE    // قريب من الحسن / مقبول (Grade >= 10)
+}
+
+/// Represents a graduate participating in the virtual 3D party
+model User {
+  id          String    @id @default(uuid())
+  name        String
+  examType    ExamType
+  grade       GradeType
+  avatarColor String    // Hex color code (e.g., "#FF5733")
+  createdAt   DateTime  @default(now())
+
+  @@index([examType])
+}
