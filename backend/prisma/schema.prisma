@@ -31,6 +31,7 @@ model User {
   examType    ExamType
   grade       GradeType
   avatarColor String    // Hex color code (e.g., "#FF5733")
+  headgear    String    @default("cap")
   createdAt   DateTime  @default(now())
 
   @@index([examType])

@@ -96,6 +96,17 @@ export default function GlassHUD() {
     }
   };
 
+  const handleTriggerZgharit = () => {
+    const socket = useGameStore.getState().socket;
+    if (socket && socket.connected) {
+      socket.emit("trigger_zgharit");
+    }
+    const audio = getAudioEngine();
+    if (audio && typeof audio.playZgharit === "function") {
+      audio.playZgharit(1.0);
+    }
+  };
+
   const activeCount = players.length + 1; // Remote players + Local player
 
   // Compile a full list of graduates online for the Wall of Honor
@@ -108,6 +119,7 @@ export default function GlassHUD() {
             examType: localPlayer.examType,
             grade: localPlayer.grade,
             avatarColor: localPlayer.avatarColor,
+            score: localPlayer.score || 0,
             isLocal: true,
           },
         ]
@@ -118,9 +130,10 @@ export default function GlassHUD() {
       examType: p.examType,
       grade: p.grade,
       avatarColor: p.avatarColor,
+      score: p.score || 0,
       isLocal: false,
     })),
-  ];
+  ].sort((a, b) => b.score - a.score);
 
   // Sorting and grading formatting
   const gradeArabic = {
@@ -147,6 +160,13 @@ export default function GlassHUD() {
             <Users className="w-4 h-4 text-purple-400" />
             <span className="text-white text-xs font-bold">
               الخريجون المتصلون الآن: {activeCount}
+            </span>
+          </div>
+
+          <div className="glass-morphism px-4 py-2 rounded-full flex items-center gap-2 shadow-lg w-fit">
+            <Trophy className="w-4 h-4 text-amber-400 animate-bounce" />
+            <span className="text-white text-xs font-bold">
+              نقاط التخرج: {localPlayer?.score || 0} ⭐
             </span>
           </div>
         </div>
@@ -325,6 +345,13 @@ export default function GlassHUD() {
           {/* VFX Buttons */}
           <div className="glass-morphism p-3 rounded-2xl flex items-center gap-3 shadow-2xl border-white/10">
             <button
+              onClick={handleTriggerZgharit}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 transition-all"
+            >
+              <Music className="w-4 h-4" />
+              زغاريد 🔊
+            </button>
+            <button
               onClick={() => triggerVfx("firework")}
               className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-600/30 flex items-center gap-1.5 transition-all"
             >
@@ -408,6 +435,9 @@ export default function GlassHUD() {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          ⭐ {grad.score || 0}
+                        </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-300 rounded-full">
                           {grad.examType === "BAC" ? "بكالوريا 2026" : "بيام 2026"}
                         </span>

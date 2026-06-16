@@ -118,9 +118,6 @@ export default function AudioManager() {
 
     const updateSpatialVolumes = () => {
       // In first-person navigation, local player position is represented by camera position
-      if (typeof window !== "undefined" && window.THREE) {
-        // Safety check if Three.js camera is initialized
-      }
       
       const localPlayer = useGameStore.getState().localPlayer;
       if (localPlayer) {

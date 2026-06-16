@@ -1,6 +1,7 @@
 // /home/moumene/bem/frontend/store/useGameStore.ts
 import { create } from "zustand";
 import { io, Socket } from "socket.io-client";
+import { getAudioEngine } from "@/components/ui/SynthesizedAudio";
 
 export interface Player {
   id: string;
@@ -13,6 +14,13 @@ export interface Player {
   position: [number, number, number];
   rotation: [number, number, number];
   isMoving: boolean;
+  score: number;
+  headgear: string;
+}
+
+export interface BeachStar {
+  id: string;
+  position: [number, number, number];
 }
 
 export interface ChatMessage {
@@ -56,7 +64,12 @@ interface GameState {
     position: [number, number, number];
     rotation: [number, number, number];
     isMoving: boolean;
+    score: number;
+    headgear: string;
   } | null;
+
+  // Stars for the mini-game
+  stars: BeachStar[];
 
   // Interaction States
   chatMessages: ChatMessage[];
@@ -65,7 +78,7 @@ interface GameState {
   viewMode: "first-person" | "orbit";
 
   // Actions
-  initSocket: (serverUrl: string, user: { id: string; name: string; examType: string; grade: string; avatarColor: string }) => void;
+  initSocket: (serverUrl: string, user: { id: string; name: string; examType: string; grade: string; avatarColor: string; headgear: string }) => void;
   registerPeerId: (peerId: string) => void;
   updateLocalMovement: (position: [number, number, number], rotation: [number, number, number], isMoving: boolean) => void;
   sendChatMessage: (text: string) => void;
@@ -82,6 +95,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   isConnected: false,
   players: [],
   localPlayer: null,
+  stars: [],
   chatMessages: [],
   activeVfx: [],
   activeEmotes: [],
@@ -106,6 +120,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         position: [0, 0, 0],
         rotation: [0, 0, 0],
         isMoving: false,
+        score: 0,
+        headgear: user.headgear,
       },
     });
 
@@ -119,15 +135,62 @@ export const useGameStore = create<GameState>((set, get) => ({
         examType: user.examType,
         grade: user.grade,
         avatarColor: user.avatarColor,
+        headgear: user.headgear,
         peerId: get().peerId,
       });
     });
 
-    socketInstance.on("welcome", (data: { socketId: string; currentPlayers: Player[] }) => {
+    socketInstance.on("welcome", (data: { socketId: string; currentPlayers: Player[]; currentStars: BeachStar[] }) => {
       set({
         socketId: data.socketId,
         players: data.currentPlayers.filter((p) => p.id !== data.socketId),
+        stars: data.currentStars || [],
       });
+    });
+
+    socketInstance.on("stars_updated", (data: { stars: BeachStar[]; collectorId?: string; scoreUpdate?: number }) => {
+      set({ stars: data.stars });
+      
+      const currentSocketId = get().socketId;
+      if (data.collectorId && data.collectorId === currentSocketId && data.scoreUpdate !== undefined) {
+        set((state) => {
+          if (state.localPlayer) {
+            return {
+              localPlayer: {
+                ...state.localPlayer,
+                score: data.scoreUpdate,
+              }
+            };
+          }
+          return {};
+        });
+        
+        // Play local procedural chime sound for collecting star
+        const audio = getAudioEngine();
+        if (audio && typeof audio.playStarPing === "function") {
+          audio.playStarPing();
+        }
+      }
+    });
+
+    socketInstance.on("zgharit_triggered", (data: { playerId: string; position: [number, number, number] }) => {
+      const currentSocketId = get().socketId;
+      if (data.playerId === currentSocketId) return;
+
+      const localPlayer = get().localPlayer;
+      if (localPlayer) {
+        const [lx, ly, lz] = localPlayer.position;
+        const [rx, ry, rz] = data.position;
+        const distance = Math.hypot(rx - lx, ry - ly, rz - lz);
+        
+        if (distance < 40) {
+          const volumeScale = Math.max(0, 1 - distance / 40);
+          const audio = getAudioEngine();
+          if (audio && typeof audio.playZgharit === "function") {
+            audio.playZgharit(volumeScale);
+          }
+        }
+      }
     });
 
     // Handle high-frequency tick updates from server

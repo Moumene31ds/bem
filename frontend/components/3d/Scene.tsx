@@ -1,5 +1,5 @@
 // /home/moumene/bem/frontend/components/3d/Scene.tsx
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Sky, Environment, PointerLockControls, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -49,31 +49,27 @@ function Bonfire({ position }: { position: [number, number, number] }) {
   const particlesRef = useRef<THREE.Points>(null);
   const particleCount = 20;
 
-  // Setup initial sparks positions
-  const [particlePositions, particleVelocities] = useRef<[Float32Array, Float32Array]>(
-    (() => {
-      const pos = new Float32Array(particleCount * 3);
-      const vels = new Float32Array(particleCount * 3);
-      for (let i = 0; i < particleCount; i++) {
-        // Initial cylinder distribution
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 0.3;
-        pos[i * 3] = Math.cos(angle) * radius;
-        pos[i * 3 + 1] = Math.random() * 1.5;
-        pos[i * 3 + 2] = Math.sin(angle) * radius;
+  // Setup initial sparks positions once using useMemo
+  const { positions, velocities } = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3);
+    const vels = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 0.3;
+      pos[i * 3] = Math.cos(angle) * radius;
+      pos[i * 3 + 1] = Math.random() * 1.5;
+      pos[i * 3 + 2] = Math.sin(angle) * radius;
 
-        vels[i * 3] = (Math.random() - 0.5) * 0.3; // Drift X
-        vels[i * 3 + 1] = 0.8 + Math.random() * 0.8; // Upwards speed Y
-        vels[i * 3 + 2] = (Math.random() - 0.5) * 0.3; // Drift Z
-      }
-      return [pos, vels];
-    })()
-  ).current;
+      vels[i * 3] = (Math.random() - 0.5) * 0.3; // Drift X
+      vels[i * 3 + 1] = 0.8 + Math.random() * 0.8; // Upwards speed Y
+      vels[i * 3 + 2] = (Math.random() - 0.5) * 0.3; // Drift Z
+    }
+    return { positions: pos, velocities: vels };
+  }, []);
 
   useFrame((state, delta) => {
     // 1. Flicker the bonfire point light
     if (fireLightRef.current) {
-      // Modulate intensity between 1.5 and 2.5
       fireLightRef.current.intensity = 1.8 + Math.sin(state.clock.getElapsedTime() * 15) * 0.4 + Math.random() * 0.3;
     }
 
@@ -83,9 +79,9 @@ function Bonfire({ position }: { position: [number, number, number] }) {
       const posAttr = geo.getAttribute("position") as THREE.BufferAttribute;
       if (posAttr) {
         for (let i = 0; i < particleCount; i++) {
-          let y = posAttr.getY(i) + particleVelocities[i * 3 + 1] * delta;
-          let x = posAttr.getX(i) + particleVelocities[i * 3] * delta;
-          let z = posAttr.getZ(i) + particleVelocities[i * 3 + 2] * delta;
+          let y = posAttr.getY(i) + velocities[i * 3 + 1] * delta;
+          let x = posAttr.getX(i) + velocities[i * 3] * delta;
+          let z = posAttr.getZ(i) + velocities[i * 3 + 2] * delta;
 
           // Recycle particle if it goes too high
           if (y > 2.0) {
@@ -140,7 +136,7 @@ function Bonfire({ position }: { position: [number, number, number] }) {
       {/* Drifting Fire Sparks */}
       <points ref={particlesRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[particlePositions, 3]} />
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         </bufferGeometry>
         <pointsMaterial
           size={0.12}
@@ -326,6 +322,140 @@ function PartyStage() {
   );
 }
 
+// Interactive Neon Dance Floor Grid Component
+function NeonDanceFloor() {
+  const localPlayer = useGameStore((state) => state.localPlayer);
+  const players = useGameStore((state) => state.players);
+
+  const rows = 4;
+  const cols = 6;
+  const tileSize = 1.4;
+  const gap = 0.15;
+
+  const tiles = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const tx = (c - (cols - 1) / 2) * (tileSize + gap);
+      const tz = (r - (rows - 1) / 2) * (tileSize + gap) + 2.5;
+      const tilePos: [number, number, number] = [tx, 0.02, tz];
+
+      tiles.push(
+        <DanceFloorTile
+          key={`${r}-${c}`}
+          position={tilePos}
+          size={tileSize}
+          localPlayer={localPlayer}
+          players={players}
+        />
+      );
+    }
+  }
+
+  return <group>{tiles}</group>;
+}
+
+// Single Tile with proximity glow
+function DanceFloorTile({
+  position,
+  size,
+  localPlayer,
+  players,
+}: {
+  position: [number, number, number];
+  size: number;
+  localPlayer: any;
+  players: any[];
+}) {
+  const tileRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (!tileRef.current) return;
+
+    let isSteppedOn = false;
+    const allPlayers = [
+      ...(localPlayer ? [localPlayer] : []),
+      ...players,
+    ];
+
+    for (const p of allPlayers) {
+      const px = p.position[0];
+      const pz = p.position[2];
+      const dist = Math.hypot(px - position[0], pz - position[2]);
+      if (dist < size * 0.8) {
+        isSteppedOn = true;
+        break;
+      }
+    }
+
+    const mat = tileRef.current.material as THREE.MeshStandardMaterial;
+    if (mat) {
+      const time = state.clock.getElapsedTime();
+      if (isSteppedOn) {
+        mat.emissive.setHSL((time * 2) % 1.0, 0.9, 0.6);
+        mat.emissiveIntensity = 2.5;
+      } else {
+        const pulse = Math.sin(time * 2.5 + position[0] * 0.3 + position[2] * 0.3) * 0.5 + 0.5;
+        mat.emissive.setHSL((position[0] * 0.05 + 0.6) % 1.0, 0.8, 0.25);
+        mat.emissiveIntensity = 0.2 + pulse * 0.6;
+      }
+    }
+  });
+
+  return (
+    <mesh ref={tileRef} position={position} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial
+        color="#111827"
+        roughness={0.2}
+        metalness={0.8}
+        emissive="#000000"
+        emissiveIntensity={0.5}
+      />
+    </mesh>
+  );
+}
+
+// Graduation Star collectible
+function GraduationStar({ star }: { star: any }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const localPlayer = useGameStore((state) => state.localPlayer);
+  const socket = useGameStore((state) => state.socket);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y = state.clock.getElapsedTime() * 2;
+      meshRef.current.position.y = star.position[1] + Math.sin(state.clock.getElapsedTime() * 4) * 0.2;
+    }
+
+    if (localPlayer) {
+      const px = localPlayer.position[0];
+      const pz = localPlayer.position[2];
+      const sx = star.position[0];
+      const sz = star.position[2];
+      const dist = Math.hypot(px - sx, pz - sz);
+      if (dist < 1.6) {
+        if (socket && socket.connected) {
+          socket.emit("collect_star", { starId: star.id });
+        }
+      }
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={star.position} castShadow>
+      <octahedronGeometry args={[0.35, 0]} />
+      <meshStandardMaterial
+        color="#fbbf24"
+        emissive="#d97706"
+        emissiveIntensity={2.0}
+        roughness={0.1}
+        metalness={0.9}
+      />
+      <pointLight color="#fbbf24" intensity={1.2} distance={5} />
+    </mesh>
+  );
+}
+
 // Coastal beach floor plane
 function BeachFloor() {
   return (
@@ -342,6 +472,7 @@ function BeachFloor() {
 
 export default function Scene() {
   const viewMode = useGameStore((state) => state.viewMode);
+  const stars = useGameStore((state) => state.stars);
 
   return (
     <div className="w-full h-full bg-slate-950">
@@ -395,6 +526,7 @@ export default function Scene() {
         {/* Game World Objects */}
         <BeachFloor />
         <PartyStage />
+        <NeonDanceFloor />
 
         {/* Sweeping Lasers */}
         <StageLaser position={[-3, 0.8, -6.5]} color="#06b6d4" />
@@ -417,6 +549,11 @@ export default function Scene() {
         <PalmTree position={[20, 0, -15]} />
         <PalmTree position={[-18, 0, 18]} />
         <PalmTree position={[18, 0, 18]} />
+
+        {/* Floating Stars Collectibles */}
+        {stars.map((star) => (
+          <GraduationStar key={star.id} star={star} />
+        ))}
 
         {/* Connected Graduates */}
         <Player />

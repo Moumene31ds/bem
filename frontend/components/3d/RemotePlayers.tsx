@@ -5,7 +5,7 @@ import { Html } from "@react-three/drei";
 import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
 import { useGameStore, Player, ActiveEmote } from "@/store/useGameStore";
-import { GraduationCap3D } from "./Player";
+import { Headgear3D } from "./Player";
 
 const EMOJI_MAP: Record<string, string> = {
   cap: "🎓",
@@ -76,8 +76,8 @@ function RemotePlayer({ player }: { player: Player }) {
           emissive={player.avatarColor}
           emissiveIntensity={0.2}
         />
-        {/* Render graduation cap on top of capsule */}
-        <GraduationCap3D color={player.avatarColor} />
+        {/* Render headgear on top of capsule */}
+        <Headgear3D type={player.headgear || "cap"} color={player.avatarColor} />
       </mesh>
 
       {/* Floating HTML Name & Grade Label */}
@@ -86,7 +86,7 @@ function RemotePlayer({ player }: { player: Player }) {
           <div className="px-3 py-1 bg-black/75 border border-white/10 rounded-full backdrop-blur-md shadow-lg flex flex-col items-center justify-center min-w-[120px]">
             <span className="text-white text-xs font-semibold whitespace-nowrap">{player.name}</span>
             <span className={`mt-0.5 px-1.5 py-0.2 text-[8px] font-bold border rounded uppercase ${badgeStyle}`}>
-              {player.examType} - {player.grade}
+              {player.examType} - {player.grade} | {player.score || 0} pts
             </span>
           </div>
           {/* Arrow anchor point */}

@@ -36,6 +36,26 @@ app.get('/health', (req, res) => {
 // Key: Socket ID, Value: Player object { id, name, examType, grade, avatarColor, position, rotation, peerId }
 const players = new Map();
 
+// Star Collectible Mini-Game State
+const stars = [];
+const spawnStar = () => {
+  let x = (Math.random() - 0.5) * 70;
+  let z = (Math.random() - 0.5) * 70;
+  // If close to DJ stage (around x=0, z=-5), push it away
+  if (Math.abs(x) < 8 && Math.abs(z + 5) < 6) {
+    z += 10;
+  }
+  return {
+    id: `star-${Date.now()}-${Math.random()}`,
+    position: [x, 0.6, z],
+  };
+};
+
+// Initialize 5 active stars
+for (let i = 0; i < 5; i++) {
+  stars.push(spawnStar());
+}
+
 io.on('connection', (socket) => {
   console.log(`[Socket Connected] ID: ${socket.id}`);
 
@@ -49,10 +69,12 @@ io.on('connection', (socket) => {
       examType: userData.examType || 'BEM',
       grade: userData.grade || 'PASSABLE',
       avatarColor: userData.avatarColor || '#3b82f6',
+      headgear: userData.headgear || 'cap',
       peerId: userData.peerId || null,
       position: [0, 0, 0], // Start at spawning location
       rotation: [0, 0, 0],
       isMoving: false,
+      score: 0,
     };
 
     players.set(socket.id, player);
@@ -69,10 +91,11 @@ io.on('connection', (socket) => {
 
     console.log(`[Player Joined] ${player.name} (${player.examType})`);
 
-    // Acknowledge the joining player with their socket id and current player list
+    // Acknowledge the joining player with their socket id, players, and stars
     socket.emit('welcome', {
       socketId: socket.id,
       currentPlayers: Array.from(players.values()),
+      currentStars: stars,
     });
   });
 
@@ -140,6 +163,48 @@ io.on('connection', (socket) => {
       };
       // Broadcast to everyone including sender
       io.emit('emote_triggered', payload);
+    }
+  });
+
+  // Handle star collection in mini-game
+  socket.on('collect_star', ({ starId }) => {
+    const starIdx = stars.findIndex((s) => s.id === starId);
+    if (starIdx !== -1) {
+      stars.splice(starIdx, 1);
+      const newStar = spawnStar();
+      stars.push(newStar);
+
+      const player = players.get(socket.id);
+      if (player) {
+        player.score = (player.score || 0) + 10;
+        players.set(socket.id, player);
+
+        io.emit('stars_updated', {
+          stars: stars,
+          collectorId: socket.id,
+          scoreUpdate: player.score,
+        });
+
+        const systemNotice = {
+          id: `sys-${Date.now()}-${Math.random()}`,
+          userId: 'system',
+          name: 'System',
+          text: `⭐ ${player.name} collected a graduation star (+10 pts)! Total: ${player.score} pts.`,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        io.emit('chat_message', systemNotice);
+      }
+    }
+  });
+
+  // Handle client Zgharit (wedding ululation) trigger
+  socket.on('trigger_zgharit', () => {
+    const player = players.get(socket.id);
+    if (player) {
+      io.emit('zgharit_triggered', {
+        playerId: socket.id,
+        position: player.position,
+      });
     }
   });
 

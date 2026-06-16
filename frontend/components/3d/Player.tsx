@@ -71,6 +71,92 @@ export function GraduationCap3D({ color }: { color: string }) {
   );
 }
 
+// Golden 3D Crown
+export function Crown3D() {
+  return (
+    <group position={[0, 0.9, 0]}>
+      {/* Crown Ring */}
+      <mesh castShadow receiveShadow>
+        <cylinderGeometry args={[0.22, 0.22, 0.08, 16, 1, true]} />
+        <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.1} />
+      </mesh>
+      {/* 5 Spires */}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const angle = (i * Math.PI * 2) / 5;
+        const radius = 0.22;
+        return (
+          <mesh
+            key={i}
+            position={[Math.cos(angle) * radius, 0.08, Math.sin(angle) * radius]}
+            rotation={[0, -angle, 0]}
+            castShadow
+          >
+            <coneGeometry args={[0.05, 0.15, 4]} />
+            <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.1} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+// Cyber Neon Glasses
+export function CyberGlasses3D({ color }: { color: string }) {
+  return (
+    <group position={[0, 0.75, 0.35]}>
+      {/* Visor shield */}
+      <mesh castShadow>
+        <boxGeometry args={[0.6, 0.15, 0.05]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={2}
+          transparent
+          opacity={0.85}
+        />
+      </mesh>
+      {/* Left arm */}
+      <mesh position={[-0.3, 0, -0.2]} rotation={[0, 0.1, 0]} castShadow>
+        <boxGeometry args={[0.04, 0.06, 0.4]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.7} />
+      </mesh>
+      {/* Right arm */}
+      <mesh position={[0.3, 0, -0.2]} rotation={[0, -0.1, 0]} castShadow>
+        <boxGeometry args={[0.04, 0.06, 0.4]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+// Graduate Sash
+export function GraduateSash3D({ color }: { color: string }) {
+  return (
+    <group position={[0, 0.4, 0]} rotation={[0, 0, 0.4]}>
+      <mesh castShadow>
+        <boxGeometry args={[0.85, 0.15, 0.85]} />
+        <meshStandardMaterial color={color} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+// Headgear Selector Component
+export function Headgear3D({ type, color }: { type: string; color: string }) {
+  switch (type) {
+    case "cap":
+      return <GraduationCap3D color={color} />;
+    case "crown":
+      return <Crown3D />;
+    case "glasses":
+      return <CyberGlasses3D color={color} />;
+    case "sash":
+      return <GraduateSash3D color={color} />;
+    default:
+      return null;
+  }
+}
+
 export default function Player() {
   const { camera } = useThree();
   const keys = useKeyboardControls();
@@ -192,7 +278,7 @@ export default function Player() {
             emissive={avatarColor}
             emissiveIntensity={0.2}
           />
-          <GraduationCap3D color={avatarColor} />
+          <Headgear3D type={localPlayer?.headgear || "cap"} color={avatarColor} />
         </mesh>
       )}
     </group>

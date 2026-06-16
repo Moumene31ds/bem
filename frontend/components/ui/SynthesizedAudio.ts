@@ -264,6 +264,93 @@ export class SynthesizedAudioEngine {
     }
   }
 
+  // --- PROCEDURAL WEDDING ULULATION (Zgharit) ---
+  public playZgharit(volumeScale: number = 1.0) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+
+    const time = this.ctx.currentTime;
+    
+    // Create nodes
+    const osc = this.ctx.createOscillator();
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+    const gainNode = this.ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(800, time);
+    // Rapid pitch sweep upwards and downwards to simulate human voice ululation sweep
+    osc.frequency.exponentialRampToValueAtTime(1300, time + 1.2);
+    osc.frequency.exponentialRampToValueAtTime(750, time + 2.0);
+
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(18, time); // 18 Hz trill speed
+
+    lfoGain.gain.setValueAtTime(180, time); // Pitch modulation range (+- 180 Hz)
+
+    // Volume envelope
+    gainNode.gain.setValueAtTime(0.001, time);
+    gainNode.gain.linearRampToValueAtTime(0.35 * volumeScale, time + 0.15); // Fade in
+    gainNode.gain.setValueAtTime(0.35 * volumeScale, time + 1.8);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 2.2); // Fade out
+
+    // Connections
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    osc.connect(gainNode);
+    gainNode.connect(this.masterGain);
+
+    // Start & Stop
+    lfo.start(time);
+    osc.start(time);
+
+    lfo.stop(time + 2.2);
+    osc.stop(time + 2.2);
+  }
+
+  // --- PROCEDURAL STAR COLLECT PING CHIME ---
+  public playStarPing() {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+
+    const time = this.ctx.currentTime;
+
+    // Dual oscillator chime (sine + triangle for a shiny retro sound)
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gainNode = this.ctx.createGain();
+
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, time); // D5 note
+    osc1.frequency.exponentialRampToValueAtTime(1174.66, time + 0.08); // Arpeggiates up to D6
+    osc1.frequency.exponentialRampToValueAtTime(1567.98, time + 0.15); // Arpeggiates up to G6
+
+    osc2.type = "triangle";
+    osc2.frequency.setValueAtTime(1174.66, time); // D6 note
+    osc2.frequency.exponentialRampToValueAtTime(1760.00, time + 0.1); // Arpeggiates up to A6
+
+    gainNode.gain.setValueAtTime(0.25, time);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.4); // Clean quick decay
+
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    gainNode.connect(this.masterGain);
+
+    osc1.start(time);
+    osc2.start(time);
+
+    osc1.stop(time + 0.4);
+    osc2.stop(time + 0.4);
+  }
+
   // Cleanup helper
   public destroy() {
     this.stopWaves();

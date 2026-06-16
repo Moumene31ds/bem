@@ -21,6 +21,7 @@ export default function EntrancePage() {
   const [examType, setExamType] = useState<"BEM" | "BAC">("BAC");
   const [grade, setGrade] = useState<"EXCELLENT" | "VERY_GOOD" | "GOOD" | "PASSABLE">("EXCELLENT");
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0].hex);
+  const [headgear, setHeadgear] = useState("cap");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -39,6 +40,7 @@ export default function EntrancePage() {
         examType,
         grade,
         avatarColor: selectedColor,
+        headgear,
         callbackUrl: "/party",
         redirect: true,
       });
@@ -127,6 +129,23 @@ export default function EntrancePage() {
               <option value="VERY_GOOD" className="bg-slate-900 text-white">جيد جداً</option>
               <option value="GOOD" className="bg-slate-900 text-white">جيد</option>
               <option value="PASSABLE" className="bg-slate-900 text-white">مقبول</option>
+            </select>
+          </div>
+
+          {/* Headgear Selector */}
+          <div className="flex flex-col">
+            <label className="text-slate-300 text-sm font-semibold mb-2 text-right">إكسسوار الرأس ثلاثي الأبعاد (الـ Avatar)</label>
+            <select
+              value={headgear}
+              onChange={(e) => setHeadgear(e.target.value)}
+              className="px-4 py-3 rounded-xl glass-input text-right appearance-none cursor-pointer"
+              disabled={loading}
+            >
+              <option value="cap" className="bg-slate-900 text-white">قبعة التخرج التقليدية 🎓</option>
+              <option value="crown" className="bg-slate-900 text-white">تاج النجاح الذهبي 👑</option>
+              <option value="glasses" className="bg-slate-900 text-white">نظارات الاحتفال النيون 🕶️</option>
+              <option value="sash" className="bg-slate-900 text-white">وشاح الخريج المميز 🎗️</option>
+              <option value="none" className="bg-slate-900 text-white">بدون إكسسوار 👤</option>
             </select>
           </div>
 
