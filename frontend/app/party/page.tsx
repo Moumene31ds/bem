@@ -1,4 +1,3 @@
-// /home/moumene/bem/frontend/app/party/page.tsx
 "use client";
 
 import React, { useEffect } from "react";
@@ -35,6 +34,7 @@ export default function PartyPage() {
         examType: u.examType || "BAC",
         grade: u.grade || "PASSABLE",
         avatarColor: u.avatarColor || "#3b82f6",
+        headgear: u.headgear || "NONE", // Added to satisfy the type requirement
       });
     }
 
