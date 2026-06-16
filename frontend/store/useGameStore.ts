@@ -32,6 +32,13 @@ export interface FireworkEffect {
   color: string;
 }
 
+export interface ActiveEmote {
+  id: string;
+  playerId: string;
+  type: string; // e.g. "cap" | "heart" | "clap" | "laugh" | "fire"
+  timestamp: number;
+}
+
 interface GameState {
   // Sockets & WebRTC Instance States
   socket: Socket | null;
@@ -54,6 +61,8 @@ interface GameState {
   // Interaction States
   chatMessages: ChatMessage[];
   activeVfx: FireworkEffect[];
+  activeEmotes: ActiveEmote[];
+  viewMode: "first-person" | "orbit";
 
   // Actions
   initSocket: (serverUrl: string, user: { id: string; name: string; examType: string; grade: string; avatarColor: string }) => void;
@@ -61,6 +70,8 @@ interface GameState {
   updateLocalMovement: (position: [number, number, number], rotation: [number, number, number], isMoving: boolean) => void;
   sendChatMessage: (text: string) => void;
   triggerVfx: (type: "firework" | "confetti", position?: [number, number, number]) => void;
+  triggerEmote: (type: string) => void;
+  setViewMode: (mode: "first-person" | "orbit") => void;
   disconnectSocket: () => void;
 }
 
@@ -73,6 +84,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   localPlayer: null,
   chatMessages: [],
   activeVfx: [],
+  activeEmotes: [],
+  viewMode: "first-person",
 
   initSocket: (serverUrl, user) => {
     // Prevent double initialization
@@ -146,14 +159,36 @@ export const useGameStore = create<GameState>((set, get) => ({
       }, 4000);
     });
 
+    // Sync emotes triggered by other graduates
+    socketInstance.on("emote_triggered", (data: { id: string; playerId: string; type: string }) => {
+      const newEmote: ActiveEmote = {
+        id: data.id,
+        playerId: data.playerId,
+        type: data.type,
+        timestamp: Date.now(),
+      };
+      
+      set((state) => ({
+        activeEmotes: [...state.activeEmotes, newEmote],
+      }));
+
+      // Cleanup emote after 2.5 seconds
+      setTimeout(() => {
+        set((state) => ({
+          activeEmotes: state.activeEmotes.filter((e) => e.id !== data.id),
+        }));
+      }, 2500);
+    });
+
     socketInstance.on("user_left", (leftSocketId: string) => {
       set((state) => ({
         players: state.players.filter((p) => p.id !== leftSocketId),
+        activeEmotes: state.activeEmotes.filter((e) => e.playerId !== leftSocketId),
       }));
     });
 
     socketInstance.on("disconnect", () => {
-      set({ isConnected: false, socketId: null });
+      set({ isConnected: false, socketId: null, activeEmotes: [] });
     });
   },
 
@@ -212,11 +247,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
+  triggerEmote: (type) => {
+    const { socket, socketId } = get();
+    if (socket && socket.connected && socketId) {
+      socket.emit("trigger_emote", { type });
+    }
+  },
+
+  setViewMode: (viewMode) => {
+    set({ viewMode });
+  },
+
   disconnectSocket: () => {
     const { socket } = get();
     if (socket) {
       socket.disconnect();
-      set({ socket: null, socketId: null, isConnected: false, players: [] });
+      set({ socket: null, socketId: null, isConnected: false, players: [], activeEmotes: [] });
     }
   },
 }));

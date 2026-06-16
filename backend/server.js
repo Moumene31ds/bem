@@ -129,6 +129,20 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle client emote triggers
+  socket.on('trigger_emote', (emoteData) => {
+    const player = players.get(socket.id);
+    if (player) {
+      const payload = {
+        id: `emote-${Date.now()}-${Math.random()}`,
+        playerId: socket.id,
+        type: emoteData.type || 'cap',
+      };
+      // Broadcast to everyone including sender
+      io.emit('emote_triggered', payload);
+    }
+  });
+
   // Handle clean disconnection
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
